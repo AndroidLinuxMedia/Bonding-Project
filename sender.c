@@ -170,7 +170,10 @@ int get_list_of_interface( void )
 			if (ioctl(sock, SIOCGIFFLAGS, &ifr) < 0) {
 				perror("SIOCGIFFLAGS");
 			}
-			if ( (ifr.ifr_flags & IFF_UP) && !(ifr.ifr_flags  & IFF_LOOPBACK) && (ifr.ifr_flags & IFF_RUNNING)) {
+			if ( (ifr.ifr_flags & IFF_UP) &&
+			     !(ifr.ifr_flags  & IFF_LOOPBACK) &&
+			     (ifr.ifr_flags & IFF_RUNNING) &&
+			     !(ifr.ifr_flags & IFF_POINTOPOINT)) {
 				printf("name %s : %s\n", ifa->ifa_name, inet_ntoa(pAddr->sin_addr));
 				strcpy(address[interface_count++], inet_ntoa(pAddr->sin_addr));
 			}

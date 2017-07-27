@@ -28,7 +28,7 @@ int main(int argc , char *argv[])
 		printf( "Could not create socket" );
 		return -1;
 	}
-	server.sin_addr.s_addr = inet_addr( "192.168.1.21" );
+	server.sin_addr.s_addr = INADDR_ANY;
 	server.sin_family = AF_INET;
 	server.sin_port = htons( 1234 );
 
