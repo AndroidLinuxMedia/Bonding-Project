@@ -70,6 +70,59 @@ int main(int argc , char *argv[])
 	close(sock);
 	return 0;
 }
+
+int Recv (int sock, char *data, int max_size)
+{
+	int receive_bytes = 0;
+	int ret_bytes = 0;
+
+	if ((data == NULL) ||
+	    (max_size <= 0))
+	{
+		return -1;
+	}
+	do
+	{
+		ret_bytes = recv (sock, (data + receive_bytes), max_size, MSG_NOSIGNAL);
+		if (ret_bytes <= 0)
+		{
+			printf ("Error while receving data from socket\n");
+			receive_bytes = -1;
+			break;
+		}
+		receive_bytes += ret_bytes;
+		max_size -= ret_bytes;
+	} while (max_size);
+	return receive_bytes;
+}
+
+int Send (int sock, char *data, int max_size)
+{
+	int sent_bytes = 0;
+	int ret_bytes = 0;
+
+	if ((data == NULL) ||
+	    (max_size <= 0))
+	{
+		return -1;
+	}
+	do
+	{
+		ret_bytes = send (sock, (data + sent_bytes), max_size, MSG_NOSIGNAL);
+		if (ret_bytes < 0)
+		{
+			printf ("Error while sending data to socket\n");
+			sent_bytes = -1;
+			break;
+		}
+		sent_bytes += ret_bytes;
+		max_size -= ret_bytes;
+	} while (max_size);
+	return sent_bytes;
+}
+
+
+
 int to_recv_data( void *socket_desc, packets *data)
 {
 	fd_set master_set, working_set;
@@ -93,15 +146,27 @@ int to_recv_data( void *socket_desc, packets *data)
 		return result;
 	} else if ( result > 0 && FD_ISSET( sock, &working_set) ) {
 
-		result = recv(sock , data, sizeof(packets), 0);
-		if (result < 0 )
+		result = Recv(sock , (char*)data, sizeof(packets));
+		if (result <= 0 )
 		{
 			printf ( "Failed to receive command\n" );
 			return result;
 		}
-		if (result == 0) {
-			printf( "Socket closed\n" );
-			return result;
+		if (data->data_length > 0) {
+			data->data = (char * ) malloc(data->data_length);
+			if (data->data == NULL) {
+				printf("Failed to allocate memory\n");
+				return -1;
+			}
+			result = Recv(sock , data->data, data->data_length);
+			if (result <= 0 )
+			{
+				printf ( "Failed to receive data\n" );
+				free(data->data);
+				return result;
+			}
+			printf("Recv string: %s\n", data->data);
+			free(data->data);
 		}
 	}
 	return result;
@@ -136,7 +201,7 @@ void *client_connection_handler(void *socket_desc)
 		}
 		switch ( data.command ) {
 			case CMD_VERSION_NUMBER:
-				printf("packet count: %lld\n", data.packet_count);
+				//printf("packet count: %lld\n", data.packet_count);
 				break;
 			default:
 				printf ( "invalid command %d received\n", data.command );

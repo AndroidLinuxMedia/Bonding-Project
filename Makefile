@@ -9,12 +9,12 @@ receiver:
 	gcc -I ./  receiver.c -o receiver -lpthread
 
 receiver_clean:
-	rm receiver
+	rm -f receiver
 
 sender_clean:
-	rm sender
+	rm -f sender
 
 clean:
-	rm receiver
-	rm sender
+	rm -f receiver
+	rm -f sender
 

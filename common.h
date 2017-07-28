@@ -22,9 +22,9 @@
 
 typedef struct _packets {
 	char version;
+	char command;
 	long long packet_count;
 	long long timestamp;
-	char command;
-	char data[MAX_CONNECTION_SUPPORT][20];
 	int data_length;
+	char *data;
 }packets;

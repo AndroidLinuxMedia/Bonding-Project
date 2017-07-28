@@ -20,6 +20,7 @@ int main( int argc , char *argv[] )
 	int nsock		= 0;
 	int new_sock		= 0;
 	packets data;
+	int result		= 0;
 
 	if (argc != 2) {
 		printf("Invalid argument received\n");
@@ -45,12 +46,32 @@ int main( int argc , char *argv[] )
 	}
 	memset(&data, 0x00, sizeof(packets));
 	printf("sending data with %d interface\n", nsock);
-	while(1)
+	while(result >= 0)
 	{
 		for(count = 0; count < nsock; count++) {
 			data.command = CMD_VERSION_NUMBER;
 			data.packet_count++;
-			write( sock[count], &data, sizeof(packets) );
+			data.data_length = 30 + data.packet_count;
+			result = Send( sock[count], (char *)&data, sizeof(packets) );
+			if (result < 0)
+			{
+				printf("Failed to send packet\n");
+				break;
+			}
+			data.data = (char*)malloc(data.data_length);
+			if (data.data == NULL) {
+				printf("Failed to allocate memory\n");
+				break;
+			}
+			sprintf( data.data, "Package count %lld and data length %d", data.packet_count, data.data_length);
+			result = Send( sock[count], data.data, data.data_length );
+			if (result < 0)
+			{
+				printf("Failed to send data");
+				free(data.data);
+				break;
+			}
+			free(data.data);
 		}
 		usleep(100000);
 	}
@@ -117,6 +138,58 @@ void get_version(int sock, packets *data)
 	data->timestamp = current_timestamp();
 }
 
+int Recv (int sock, char *data, int max_size)
+{
+	int receive_bytes = 0;
+	int ret_bytes = 0;
+
+	if ((data == NULL) ||
+	    (max_size <= 0))
+	{
+		return -1;
+	}
+	do
+	{
+		ret_bytes = recv (sock, (data + receive_bytes), max_size, MSG_NOSIGNAL);
+		if (ret_bytes <= 0)
+		{
+			printf ("Error while receving data from socket\n");
+			receive_bytes = -1;
+			break;
+		}
+
+		receive_bytes += ret_bytes;
+		max_size -= ret_bytes;
+	} while (max_size);
+	return receive_bytes;
+}
+
+int Send (int sock, char *data, int max_size)
+{
+	int sent_bytes = 0;
+	int ret_bytes = 0;
+
+	if ((data == NULL) ||
+	    (max_size <= 0))
+	{
+		return -1;
+	}
+	do
+	{
+		ret_bytes = send (sock, (data + sent_bytes), max_size, MSG_NOSIGNAL);
+		if (ret_bytes < 0)
+		{
+			printf ("Error while sending data to socket\n");
+			sent_bytes = -1;
+			break;
+		}
+		sent_bytes += ret_bytes;
+		max_size -= ret_bytes;
+	} while (max_size);
+	return sent_bytes;
+}
+
+
 int to_recv_data( void *socket_desc, packets *data)
 {
 	fd_set master_set, working_set;
@@ -140,7 +213,7 @@ int to_recv_data( void *socket_desc, packets *data)
 		return result;
 	} else if ( result > 0 && FD_ISSET( sock, &working_set) ) {
 
-		result = recv(sock , data, sizeof(packets), 0);
+		result = Recv(sock , (char *)data, sizeof(packets));
 		if (result < 0 )
 		{
 			printf ( "Failed to receive command\n" );
@@ -205,15 +278,6 @@ void *client_connection_handler(void *socket_desc)
 
 		switch ( data.command ) {
 			case CMD_VERSION_NUMBER:
-				get_version( sock, &data );
-				write( sock , &data, sizeof(packets) );
-				break;
-			case CMD_LIST_OF_INTERFACE:
-				for (count = interface_count - 1; count >= 0; count--) {
-					strcpy(data.data[count], address[count]);
-					printf("ip: %s count: %d\n", data.data[count], count);
-				}
-				data.data_length = interface_count;
 				get_version( sock, &data );
 				write( sock , &data, sizeof(packets) );
 				break;
